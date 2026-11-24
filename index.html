@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3a45">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bassin">
+<title>Bassin</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%230e6b74'/%3E%3Cpath d='M6 17c5-7 14-7 20 0-6 5-15 5-20 0z' fill='%23f07a3c'/%3E%3Ccircle cx='21' cy='16' r='1.3' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --fond: #edf3f2;
+    --carte: #ffffff;
+    --tuile: #f3f7f7;
+    --texte: #10292f;
+    --doux: #5c7379;
+    --bord: #d5e1e1;
+    --primaire: #0e6b74;
+    --primaire-txt: #ffffff;
+    --primaire-pale: #dcefee;
+    --koi: #e2622b;
+    --ok: #23865a;
+    --avert: #c27a00;
+    --alerte: #c0392b;
+    --info: #2867a8;
+    --ombre: 0 1px 2px rgba(16, 41, 47, .06), 0 6px 20px rgba(16, 41, 47, .07);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fond: #091619;
+      --carte: #11242a;
+      --tuile: #172f35;
+      --texte: #e3eeee;
+      --doux: #8ea7ab;
+      --bord: #234046;
+      --primaire: #2fa3a9;
+      --primaire-txt: #04181b;
+      --primaire-pale: #173e43;
+      --ok: #3fbf86;
+      --avert: #e8a530;
+      --alerte: #ef6a5b;
+      --info: #6aa8ea;
+      --ombre: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    background: var(--fond);
+    color: var(--texte);
+    line-height: 1.4;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  svg.i { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---------- En-tête ---------- */
+  header {
+    position: relative;
+    color: #fff;
+    background: linear-gradient(165deg, #10596a 0%, #0b3a45 55%, #082a33 100%);
+    padding: calc(18px + env(safe-area-inset-top)) 20px 60px;
+    overflow: hidden;
+  }
+  header::after {   /* vaguelettes */
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 46' preserveAspectRatio='none'%3E%3Cpath d='M0 26c40-12 80-12 120 0s80 12 120 0 80-12 120 0 40 6 40 6V46H0z' fill='%23ffffff' fill-opacity='.06'/%3E%3Cpath d='M0 34c50-10 90-10 140 0s90 10 140 0 90-8 120 0V46H0z' fill='%23ffffff' fill-opacity='.08'/%3E%3C/svg%3E") bottom / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+  .entete { max-width: 960px; margin: 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .marque { display: flex; align-items: center; gap: 8px; font-size: .95rem; font-weight: 600; letter-spacing: .02em; opacity: .9; }
+  .marque .point { width: 9px; height: 9px; border-radius: 50%; background: #5be3a0; box-shadow: 0 0 0 3px rgba(91, 227, 160, .25); }
+  .marque.hors-ligne .point { background: #ff8a7a; box-shadow: 0 0 0 3px rgba(255, 138, 122, .25); }
+  #heure { font-size: clamp(2.4rem, 11vw, 3.4rem); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.1; margin-top: 10px; }
+  #date { font-size: 1.02rem; opacity: .85; margin-top: 2px; }
+  .btn-icone {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: rgba(255, 255, 255, .12); color: #fff; border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 12px; min-height: 44px; padding: 0 14px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .btn-icone:hover { background: rgba(255, 255, 255, .2); }
+
+  #bandeau {
+    max-width: 960px; margin: 12px auto 0; padding: 10px 14px; border-radius: 10px;
+    background: rgba(255, 120, 100, .2); border: 1px solid rgba(255, 150, 130, .4); font-size: .92rem;
+  }
+
+  /* ---------- Cartes ---------- */
+  main {
+    position: relative; z-index: 1;
+    max-width: 960px; margin: -36px auto 0; padding: 0 14px 32px;
+    display: grid; gap: 14px;
+  }
+  @media (min-width: 760px) {
+    main { grid-template-columns: 1fr 1fr; padding: 0 20px 40px; }
+  }
+  .carte { background: var(--carte); border-radius: 18px; box-shadow: var(--ombre); padding: 18px; }
+  .carte h2 { margin: 0 0 14px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+  .carte h2 .i { color: var(--primaire); }
+  .carte h2 .droite { margin-left: auto; font-size: .85rem; font-weight: 500; color: var(--doux); }
+
+  .alertes { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
+  .alertes li { display: flex; gap: 10px; align-items: flex-start; font-size: .92rem; padding: 9px 12px; border-radius: 10px; background: var(--tuile); }
+  .alertes li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--doux); }
+  .alertes li.ok::before { background: var(--ok); }
+  .alertes li.avert::before { background: var(--avert); }
+  .alertes li.alerte::before { background: var(--alerte); }
+  .alertes li.info::before { background: var(--info); }
+
+  .tuiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tuile { background: var(--tuile); border-radius: 12px; padding: 10px 12px; min-height: 64px; }
+  .tuile .lib { font-size: .78rem; color: var(--doux); text-transform: uppercase; letter-spacing: .04em; }
+  .tuile .val { display: flex; align-items: center; gap: 7px; font-weight: 650; margin-top: 3px; }
+  .tuile .val::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--doux); flex: none; }
+  .tuile.ok .val::before { background: var(--ok); }
+  .tuile.avert .val::before { background: var(--avert); }
+  .tuile.alerte .val::before { background: var(--alerte); }
+  .tuile .sous { font-size: .8rem; color: var(--doux); margin-top: 2px; }
+
+  .relais { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .relais span {
+    text-align: center; font-size: .76rem; padding: 6px 2px; border-radius: 8px;
+    border: 1px solid var(--bord); color: var(--doux);
+  }
+  .relais span b { display: block; font-size: .9rem; }
+  .relais span.on { background: var(--primaire-pale); border-color: var(--primaire); color: var(--texte); }
+
+  /* ---------- Boutons ---------- */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 50px; padding: 0 16px; border-radius: 13px;
+    font: inherit; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--bord); background: var(--carte); color: var(--texte);
+    transition: transform .08s ease, background .15s ease;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+  .btn.primaire { background: var(--primaire); color: var(--primaire-txt); border-color: var(--primaire); }
+  .btn.koi { background: var(--koi); color: #fff; border-color: var(--koi); }
+  .btn.danger { color: var(--alerte); border-color: var(--alerte); background: transparent; }
+  .btn.danger-plein { background: var(--alerte); border-color: var(--alerte); color: #fff; }
+  .btn.petit { min-height: 40px; width: auto; font-size: .9rem; }
+  :focus-visible { outline: 3px solid var(--koi); outline-offset: 2px; }
+  .pile { display: grid; gap: 8px; }
+  .aide { font-size: .82rem; color: var(--doux); margin: 4px 2px 0; }
+
+  /* ---------- Musique ---------- */
+  .lecteur { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .lecteur .btn { flex-direction: column; gap: 3px; min-height: 64px; padding: 6px 2px; font-size: .74rem; font-weight: 600; }
+  .lecteur .btn svg.i { width: 1.5em; height: 1.5em; }
+  .lecteur .btn.lire { background: var(--primaire); color: var(--primaire-txt); border-color: var(--primaire); }
+  .ecran { display: flex; align-items: center; gap: 12px; background: var(--tuile); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .ecran .titre { font-weight: 650; }
+  .ecran .vol { margin-left: auto; text-align: right; font-size: .8rem; color: var(--doux); min-width: 92px; }
+  .barre { height: 5px; border-radius: 3px; background: var(--bord); margin-top: 4px; overflow: hidden; }
+  .barre i { display: block; height: 100%; width: 0; background: var(--primaire); transition: width .25s; }
+  .ondes { display: flex; align-items: flex-end; gap: 2px; height: 18px; width: 18px; }
+  .ondes i { width: 3px; height: 30%; background: var(--doux); border-radius: 2px; }
+  .lecture .ondes i { background: var(--koi); animation: onde 1s ease-in-out infinite; }
+  .lecture .ondes i:nth-child(2) { animation-delay: -.3s; }
+  .lecture .ondes i:nth-child(3) { animation-delay: -.6s; }
+  .lecture .ondes i:nth-child(4) { animation-delay: -.15s; }
+  @keyframes onde { 0%, 100% { height: 25%; } 50% { height: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .lecture .ondes i { animation: none; height: 70%; } }
+
+  /* ---------- Journal ---------- */
+  .journal { display: grid; gap: 8px; }
+  .ligne-j {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    background: var(--tuile); border: 0; border-radius: 12px; padding: 10px 12px;
+    font: inherit; color: inherit; cursor: pointer;
+  }
+  .ligne-j:hover { outline: 1px solid var(--bord); }
+  .ligne-j .pastille { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--primaire-pale); color: var(--primaire); flex: none; }
+  .ligne-j .pastille.koi { background: rgba(226, 98, 43, .14); color: var(--koi); }
+  .ligne-j .txt { flex: 1; min-width: 0; }
+  .ligne-j .txt b { display: block; }
+  .ligne-j .txt small { color: var(--doux); }
+  .ligne-j .nb { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ligne-j .chevron { color: var(--doux); }
+
+  /* ---------- Fenêtres ---------- */
+  dialog {
+    border: 0; padding: 0; border-radius: 18px; background: var(--carte); color: var(--texte);
+    width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 32px); box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+  }
+  dialog::backdrop { background: rgba(6, 22, 26, .55); }
+  .dlg { padding: 18px; display: flex; flex-direction: column; max-height: calc(100vh - 32px); }
+  .dlg-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .dlg-tete h3 { margin: 0; font-size: 1.1rem; flex: 1; }
+  .fermer { background: var(--tuile); border: 0; border-radius: 10px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--texte); cursor: pointer; }
+  .defile { overflow-y: auto; margin: 0 -18px; padding: 0 18px; }
+  .histo { list-style: none; padding: 0; margin: 0; }
+  .histo li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--bord); }
+  .histo li:last-child { border-bottom: 0; }
+  .histo .h { font-variant-numeric: tabular-nums; font-weight: 650; white-space: nowrap; }
+  .histo .tag { font-size: .72rem; background: var(--primaire-pale); color: var(--primaire); padding: 1px 6px; border-radius: 6px; margin-left: 6px; }
+  .vide { color: var(--doux); text-align: center; padding: 24px 0; }
+  section.param { border-top: 1px solid var(--bord); padding: 14px 0; }
+  section.param:first-child { border-top: 0; padding-top: 4px; }
+  section.param h4 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: .98rem; }
+  label { display: block; font-size: .82rem; color: var(--doux); margin: 8px 0 4px; }
+  input[type=text], input[type=password] {
+    width: 100%; min-height: 46px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--bord);
+    background: var(--tuile); color: var(--texte); font: inherit;
+  }
+  .champ-mdp { position: relative; }
+  .champ-mdp input { padding-right: 76px; }
+  .champ-mdp button { position: absolute; right: 6px; top: 6px; bottom: 6px; border: 0; border-radius: 8px; background: var(--carte); color: var(--doux); font: inherit; font-size: .8rem; cursor: pointer; padding: 0 10px; }
+  .reseaux { display: grid; gap: 4px; margin: 8px 0 2px; }
+  .reseaux button {
+    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+    background: var(--tuile); border: 1px solid transparent; border-radius: 10px; padding: 9px 10px;
+    font: inherit; color: inherit; cursor: pointer;
+  }
+  .reseaux button:hover { border-color: var(--bord); }
+  .reseaux .nom { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barres { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .barres i { width: 3px; background: var(--bord); border-radius: 1px; }
+  .barres i.on { background: var(--primaire); }
+  .ligne-btn { display: flex; gap: 8px; margin-top: 10px; }
+  .ligne-btn .btn { flex: 1; }
+  .sonde { margin-bottom: 10px; }
+  .sonde .lib { font-size: .82rem; color: var(--doux); margin-bottom: 4px; }
+  .voyant {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px;
+    font-weight: 650; border: 2px solid var(--bord); color: var(--doux); background: var(--tuile);
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .voyant::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: currentColor; flex: none; }
+  .voyant.ok { color: var(--ok); border-color: var(--ok); background: rgba(35, 134, 90, .12); }
+  .voyant.alerte { color: var(--alerte); border-color: var(--alerte); background: rgba(192, 57, 43, .12); }
+  .voyant.alerte::before { box-shadow: 0 0 0 4px rgba(192, 57, 43, .25); }
+  .infos { font-size: .88rem; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+  .infos dt { color: var(--doux); }
+  .infos dd { margin: 0; overflow-wrap: anywhere; }
+  .infos a, .aide a { color: var(--primaire); }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 10;
+    transform: translate(-50%, 140%); opacity: 0;
+    max-width: calc(100vw - 32px); padding: 12px 16px; border-radius: 12px;
+    background: #10292f; color: #fff; font-size: .92rem; box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+    transition: transform .25s ease, opacity .25s ease; pointer-events: none;
+  }
+  #toast.visible { transform: translate(-50%, 0); opacity: 1; }
+  #toast.erreur { background: var(--alerte); }
+  .cache { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Icônes -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-etat" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
+  <symbol id="i-commandes" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></symbol>
+  <symbol id="i-journal" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></symbol>
+  <symbol id="i-lire" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
+  <symbol id="i-suivant" viewBox="0 0 24 24"><path d="M5 5v14l10-7z" fill="currentColor"/><path d="M18 5v14"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+  <symbol id="i-moins" viewBox="0 0 24 24"><path d="M3 9.5h3.5L11 5.5v13l-4.5-4H3z" fill="currentColor"/><path d="M15 12h6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M3 9.5h3.5L11 5.5v13l-4.5-4H3z" fill="currentColor"/><path d="M15 12h6M18 9v6"/></symbol>
+  <symbol id="i-goutte" viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/></symbol>
+  <symbol id="i-vidange" viewBox="0 0 24 24"><path d="M12 3v10M8 9.5l4 4 4-4"/><path d="M3 19c1.5 0 1.5-1.4 3-1.4s1.5 1.4 3 1.4 1.5-1.4 3-1.4 1.5 1.4 3 1.4 1.5-1.4 3-1.4 1.5 1.4 3 1.4"/></symbol>
+  <symbol id="i-heron" viewBox="0 0 24 24"><path d="M10 21v-6M13 21v-6"/><path d="M6 12c2 3.5 8 3.5 10 0 .8-1.5.6-3.2-.4-4.5L14 5.5"/><path d="M14 5.5l1.2-1.8L21 5l-5 1"/></symbol>
+  <symbol id="i-filtre" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.8 16a5 5 0 0 1 6.4 0"/><circle cx="12" cy="19.3" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-cloche" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.1"/></symbol>
+  <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9s1.3-6.4 3.8-9z"/></symbol>
+  <symbol id="i-cadenas" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+</svg>
+
+<header>
+  <div class="entete">
+    <div>
+      <div class="marque" id="marque"><span class="point"></span><span id="etatConnexion">Bassin</span></div>
+      <div id="heure">--:--:--</div>
+      <div id="date">Connexion à l'ESP32…</div>
+    </div>
+    <button class="btn-icone" id="btnParam" type="button" aria-label="Paramètres">
+      <svg class="i"><use href="#i-reglages"/></svg><span>Paramètres</span>
+    </button>
+  </div>
+  <div id="bandeau" class="cache">Connexion perdue avec l'ESP32 — nouvelle tentative en cours…</div>
+</header>
+
+<main>
+  <!-- État -->
+  <section class="carte">
+    <h2><svg class="i"><use href="#i-etat"/></svg>État du bassin</h2>
+    <ul class="alertes" id="alertes"><li>Chargement…</li></ul>
+    <div class="tuiles">
+      <div class="tuile" id="tNiveau"><div class="lib">Niveau d'eau</div><div class="val">—</div><div class="sous"></div></div>
+      <div class="tuile" id="tProtection"><div class="lib">Protection héron</div><div class="val">—</div><div class="sous"></div></div>
+      <div class="tuile" id="tFaisceau"><div class="lib">Faisceau optique</div><div class="val">—</div><div class="sous"></div></div>
+      <div class="tuile" id="tFiltration"><div class="lib">Filtration</div><div class="val">—</div><div class="sous"></div></div>
+    </div>
+    <div class="relais" aria-label="État des relais">
+      <span id="r1"><b>R1</b>Eau</span>
+      <span id="r2"><b>R2</b>Arrosage</span>
+      <span id="r3"><b>R3</b>Sono</span>
+      <span id="r4"><b>R4</b>Filtration</span>
+    </div>
+  </section>
+
+  <!-- Commandes -->
+  <section class="carte">
+    <h2><svg class="i"><use href="#i-commandes"/></svg>Commandes</h2>
+    <div class="pile">
+      <button class="btn" id="bRemplissage" type="button" data-cmd="remplissage">
+        <svg class="i"><use href="#i-goutte"/></svg><span>Remplissage</span>
+      </button>
+      <button class="btn" id="bFiltration" type="button" data-cmd="filtration_off">
+        <svg class="i"><use href="#i-filtre"/></svg><span>Arrêt de la filtration</span>
+      </button>
+      <button class="btn" id="bProtection" type="button" data-cmd="protection_off">
+        <svg class="i"><use href="#i-bouclier"/></svg><span>Arrêt de la protection (1 h)</span>
+      </button>
+    </div>
+    <p class="aide" id="aideCommandes">Le remplissage manuel s'arrête quand la sonde de niveau bas remonte.</p>
+  </section>
+
+  <!-- Musique -->
+  <section class="carte" id="carteMusique">
+    <h2><svg class="i"><use href="#i-note"/></svg>Musique</h2>
+    <div class="ecran">
+      <div class="ondes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="titre" id="morceau">À l'arrêt</div>
+      <div class="vol">Volume <b id="volume">–</b>/31<div class="barre"><i id="volBarre"></i></div></div>
+    </div>
+    <div class="lecteur">
+      <button class="btn lire" type="button" data-cmd="lecture"><svg class="i"><use href="#i-lire"/></svg>Lecture</button>
+      <button class="btn" type="button" data-cmd="suivant"><svg class="i"><use href="#i-suivant"/></svg>Suivant</button>
+      <button class="btn" type="button" data-cmd="moins"><svg class="i"><use href="#i-moins"/></svg>Moins fort</button>
+      <button class="btn" type="button" data-cmd="plus"><svg class="i"><use href="#i-plus"/></svg>Plus fort</button>
+      <button class="btn" type="button" data-cmd="stop"><svg class="i"><use href="#i-stop"/></svg>Stop</button>
+    </div>
+  </section>
+
+  <!-- Journal -->
+  <section class="carte">
+    <h2><svg class="i"><use href="#i-journal"/></svg>Journal</h2>
+    <div class="journal">
+      <button class="ligne-j" type="button" data-histo="remplissages">
+        <span class="pastille"><svg class="i"><use href="#i-goutte"/></svg></span>
+        <span class="txt"><b>Dates des remplissages</b><small id="j-remplissages">–</small></span>
+        <span class="nb" id="n-remplissages">–</span><svg class="i chevron"><use href="#i-chevron"/></svg>
+      </button>
+      <button class="ligne-j" type="button" data-histo="vidanges">
+        <span class="pastille"><svg class="i"><use href="#i-vidange"/></svg></span>
+        <span class="txt"><b>Dates des vidanges</b><small id="j-vidanges">–</small></span>
+        <span class="nb" id="n-vidanges">–</span><svg class="i chevron"><use href="#i-chevron"/></svg>
+      </button>
+      <button class="ligne-j" type="button" data-histo="heron">
+        <span class="pastille koi"><svg class="i"><use href="#i-heron"/></svg></span>
+        <span class="txt"><b>Détections du héron</b><small id="j-heron">–</small></span>
+        <span class="nb" id="n-heron">–</span><svg class="i chevron"><use href="#i-chevron"/></svg>
+      </button>
+      <button class="btn danger" id="bEffacer" type="button" style="margin-top:6px">
+        <svg class="i"><use href="#i-corbeille"/></svg><span>Suppression des données</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<!-- Historique -->
+<dialog id="dlgHisto">
+  <div class="dlg">
+    <div class="dlg-tete">
+      <h3 id="hTitre">Historique</h3>
+      <form method="dialog"><button class="fermer" aria-label="Fermer">×</button></form>
+    </div>
+    <p class="aide" id="hResume" style="margin:0 0 6px"></p>
+    <div class="defile"><ul class="histo" id="hListe"></ul></div>
+  </div>
+</dialog>
+
+<!-- Paramètres -->
+<dialog id="dlgParam">
+  <div class="dlg">
+    <div class="dlg-tete">
+      <h3>Paramètres</h3>
+      <form method="dialog"><button class="fermer" aria-label="Fermer">×</button></form>
+    </div>
+    <div class="defile">
+      <section class="param">
+        <h4><svg class="i"><use href="#i-goutte"/></svg>Sondes de niveau (étalonnage)</h4>
+        <div class="sonde">
+          <div class="lib">Sonde de niveau bas (GPIO 32)</div>
+          <div class="voyant" id="vBas" aria-live="polite">Pas de lecture</div>
+        </div>
+        <div class="sonde">
+          <div class="lib">Sonde de trop-plein (GPIO 33)</div>
+          <div class="voyant" id="vHaut" aria-live="polite">Pas de lecture</div>
+        </div>
+        <p class="aide" id="aideSondes"></p>
+        <p class="aide" id="etatReglage" style="margin:6px 2px 8px"></p>
+        <button class="btn" id="bReglage" type="button" data-cmd="reglage_on">
+          <svg class="i"><use href="#i-reglages"/></svg><span>Commencer le réglage des sondes</span>
+        </button>
+      </section>
+
+      <section class="param cache" id="secDistant">
+        <h4><svg class="i"><use href="#i-globe"/></svg>Connexion à distance</h4>
+        <p class="aide" id="dEtat" style="margin-top:0">–</p>
+        <div class="ligne-btn">
+          <button class="btn" type="button" id="bModifConnexion">Modifier la connexion</button>
+          <button class="btn danger" type="button" id="bOublier">Oublier</button>
+        </div>
+      </section>
+
+      <section class="param" id="secWifi">
+        <h4><svg class="i"><use href="#i-wifi"/></svg>Connexion WiFi</h4>
+        <p class="aide" id="pEtatWifi" style="margin-top:0">–</p>
+        <button class="btn petit" id="bScan" type="button">Rechercher les réseaux</button>
+        <div class="reseaux" id="pReseaux"></div>
+        <form id="fWifi" autocomplete="off">
+          <label for="pSsid">Nom du réseau (SSID)</label>
+          <input type="text" id="pSsid" maxlength="32" autocapitalize="off" spellcheck="false" required>
+          <label for="pPass">Mot de passe</label>
+          <div class="champ-mdp">
+            <input type="password" id="pPass" maxlength="64" autocapitalize="off" spellcheck="false" placeholder="Laisser vide pour garder l'actuel">
+            <button type="button" id="bVoirMdp">Afficher</button>
+          </div>
+          <div class="ligne-btn"><button class="btn primaire" type="submit">Enregistrer et redémarrer</button></div>
+        </form>
+      </section>
+
+      <section class="param" id="secNtfy">
+        <h4><svg class="i"><use href="#i-cloche"/></svg>Notifications (ntfy)</h4>
+        <form id="fNtfy" autocomplete="off">
+          <label for="pTopic">Sujet ntfy (vide = pas de notification)</label>
+          <input type="text" id="pTopic" maxlength="64" autocapitalize="off" spellcheck="false" pattern="[A-Za-z0-9_\-]*">
+          <p class="aide">Dans l'application ntfy du téléphone, abonnez-vous à ce sujet sur ntfy.sh. Choisissez un nom difficile à deviner : les sujets ntfy.sh sont publics. <a id="lienNtfy" href="#" target="_blank" rel="noopener">Ouvrir le sujet dans le navigateur</a></p>
+          <div class="ligne-btn">
+            <button class="btn primaire" type="submit">Enregistrer</button>
+            <button class="btn" type="button" id="bTestNtfy">Envoyer un test</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="param" id="secMqtt">
+        <h4><svg class="i"><use href="#i-globe"/></svg>Accès à distance (MQTT)</h4>
+        <p class="aide" id="mqEtat" style="margin-top:0">–</p>
+        <form id="fMqtt" autocomplete="off">
+          <label for="mqHote">Serveur (adresse du déploiement EMQX)</label>
+          <input type="text" id="mqHote" maxlength="120" placeholder="xxxxxxxx.ala.eu-central-1.emqxsl.com" autocapitalize="off" spellcheck="false">
+          <label for="mqPort">Port MQTT chiffré (8883)</label>
+          <input type="text" id="mqPort" inputmode="numeric" maxlength="5" placeholder="8883">
+          <label for="mqUser">Identifiant de l'ESP32 sur le serveur</label>
+          <input type="text" id="mqUser" maxlength="64" autocapitalize="off" spellcheck="false">
+          <label for="mqPass">Mot de passe</label>
+          <div class="champ-mdp">
+            <input type="password" id="mqPass" maxlength="64" autocapitalize="off" spellcheck="false" placeholder="Laisser vide pour garder l'actuel">
+            <button type="button" class="voirMdp" data-cible="mqPass">Afficher</button>
+          </div>
+          <label for="mqBase">Identifiant du bassin</label>
+          <input type="text" id="mqBase" maxlength="64" autocapitalize="off" spellcheck="false" pattern="[A-Za-z0-9_\-/]*">
+          <p class="aide">À reporter dans l'application en ligne, avec le même serveur (port 8084) et l'identifiant prévu pour le téléphone. Laisser le serveur vide désactive l'accès à distance.</p>
+          <div class="ligne-btn"><button class="btn primaire" type="submit">Enregistrer</button></div>
+        </form>
+      </section>
+
+      <section class="param">
+        <h4><svg class="i"><use href="#i-info"/></svg>Système</h4>
+        <dl class="infos" id="pInfos"></dl>
+        <p class="aide" id="liensMaj">Mettre à jour cette page : <a href="/upload">envoyer un nouveau index.html</a><br>
+        Mettre à jour le programme : <a href="/update">envoyer un fichier .bin</a> (mot de passe demandé)</p>
+      </section>
+    </div>
+  </div>
+</dialog>
+
+<!-- Connexion à distance -->
+<dialog id="dlgConnexion">
+  <form class="dlg" id="fConnexion">
+    <div class="dlg-tete">
+      <h3>Connexion à ton bassin</h3>
+      <button type="button" class="fermer" id="bFermerConnexion" aria-label="Fermer">×</button>
+    </div>
+    <div class="defile">
+      <p class="aide" style="margin-top:0">Ces informations restent enregistrées sur cet appareil uniquement.</p>
+      <label for="cHote">Serveur (adresse du déploiement EMQX)</label>
+      <input type="text" id="cHote" required maxlength="120" placeholder="xxxxxxxx.ala.eu-central-1.emqxsl.com" autocapitalize="off" spellcheck="false">
+      <label for="cPort">Port WebSocket chiffré (8084)</label>
+      <input type="text" id="cPort" inputmode="numeric" maxlength="5" placeholder="8084">
+      <label for="cUser">Identifiant</label>
+      <input type="text" id="cUser" required maxlength="64" autocomplete="username" autocapitalize="off" spellcheck="false">
+      <label for="cPass">Mot de passe</label>
+      <div class="champ-mdp">
+        <input type="password" id="cPass" required maxlength="64" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+        <button type="button" class="voirMdp" data-cible="cPass">Afficher</button>
+      </div>
+      <label for="cBase">Identifiant du bassin</label>
+      <input type="text" id="cBase" required maxlength="64" placeholder="bassin/xxxxxx" autocapitalize="off" spellcheck="false">
+      <div class="ligne-btn"><button class="btn primaire" type="submit">Se connecter</button></div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Confirmation -->
+<dialog id="dlgConfirm">
+  <form method="dialog" class="dlg">
+    <div class="dlg-tete"><h3 id="cTitre">Confirmer</h3></div>
+    <p id="cTexte" style="margin:0 0 6px"></p>
+    <div class="ligne-btn">
+      <button class="btn" value="annuler">Annuler</button>
+      <button class="btn primaire" value="ok" id="cOk">Confirmer</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+let etat = null;          // dernier état reçu de l'ESP32
+let decalage = 0;         // heure ESP32 - heure du téléphone (s), en local uniquement
+let echecs = 0;
+let minuteriePoll = null;
+
+// Page servie par l'ESP32 (http://…) = mode local ; page hébergée en ligne (https://…) = mode distant
+const DISTANT = location.protocol !== 'http:' || new URLSearchParams(location.search).has('distant');
+
+// ------------------------------------------------------------ Réseau ----
+async function api(url, options = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), options.delai || 8000);
+  try {
+    const r = await fetch(url, { method: options.method || 'GET', body: options.body, signal: ctrl.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+const envoyer = (url, donnees) => api(url, { method: 'POST', body: new URLSearchParams(donnees) });
+
+// Demande une mise à jour de l'état (local : interrogation de l'ESP32 ; distant : signe de vie)
+function rafraichir() {
+  if (DISTANT) distant.ping();
+  else rafraichirLocal();
+}
+
+async function rafraichirLocal() {
+  clearTimeout(minuteriePoll);
+  try {
+    const e = await api('/api/etat', { delai: 5000 });
+    etat = e;
+    decalage = e.epoch - Date.now() / 1000;
+    echecs = 0;
+    connexion(true);
+    afficher(e);
+  } catch (err) {
+    if (++echecs >= 2) connexion(false);
+  }
+  // Paramètres ouverts : rafraîchissement chaque seconde pour suivre les sondes
+  minuteriePoll = setTimeout(rafraichirLocal, document.hidden ? 15000 : ($('#dlgParam').open ? 1000 : 2000));
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) rafraichir(); });
+
+function connexion(ok, texte) {
+  $('#marque').classList.toggle('hors-ligne', !ok);
+  $('#etatConnexion').textContent = ok ? (DISTANT ? 'Bassin · à distance' : 'Bassin') : 'Bassin · hors ligne';
+  $('#bandeau').textContent = texte || "Connexion perdue avec l'ESP32 — nouvelle tentative en cours…";
+  $('#bandeau').classList.toggle('cache', ok);
+  if (!ok) { voyant('#vBas', null); voyant('#vHaut', null); }
+}
+
+// ------------------------------------------------------------ Outils ----
+function duree(s) {
+  s = Math.max(0, Math.round(s || 0));
+  const e = '\u00a0';        // espace insécable : « 42 s » ne se coupe pas
+  if (s < 60) return s + e + 's';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + e + 'min';
+  const h = Math.floor(m / 60);
+  if (h < 48) return h + e + 'h' + e + String(m % 60).padStart(2, '0');
+  return Math.floor(h / 24) + e + 'j';
+}
+function qualiteSignal(rssi) {
+  if (rssi >= -60) return 'excellent';
+  if (rssi >= -70) return 'bon';
+  if (rssi >= -80) return 'faible';
+  return 'très faible';
+}
+function barresSignal(rssi) {
+  const n = rssi >= -60 ? 4 : rssi >= -70 ? 3 : rssi >= -80 ? 2 : 1;
+  const s = document.createElement('span');
+  s.className = 'barres';
+  [5, 8, 11, 14].forEach((h, i) => {
+    const b = document.createElement('i');
+    b.style.height = h + 'px';
+    if (i < n) b.className = 'on';
+    s.appendChild(b);
+  });
+  return s;
+}
+function majuscule(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+function el(tag, classe, texte) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texte !== undefined) e.textContent = texte;
+  return e;
+}
+
+let minuterieToast = null;
+function toast(message, ok = true) {
+  const t = $('#toast');
+  t.textContent = message;
+  t.className = 'visible' + (ok ? '' : ' erreur');
+  clearTimeout(minuterieToast);
+  minuterieToast = setTimeout(() => { t.className = ''; }, 3800);
+}
+
+// ------------------------------------------------------------ Horloge ---
+let fmtDate = null, fmtHeure = null;
+try {
+  fmtDate = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
+  fmtHeure = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Paris' });
+} catch (e) { /* navigateur ancien : on affichera l'heure brute de l'ESP32 */ }
+
+function horloge() {
+  if (!etat) return;
+  if (!etat.heureValide) {
+    $('#heure').textContent = '--:--:--';
+    $('#date').textContent = 'Heure non réglée';
+    return;
+  }
+  if (fmtDate && fmtHeure) {
+    const d = new Date((Date.now() / 1000 + decalage) * 1000);
+    $('#heure').textContent = fmtHeure.format(d);
+    $('#date').textContent = majuscule(fmtDate.format(d));
+  } else {
+    const [j, h] = etat.heure.split(' ');
+    $('#heure').textContent = h;
+    $('#date').textContent = j;
+  }
+}
+setInterval(horloge, 1000);
+
+// ------------------------------------------------------------ Affichage --
+function tuile(id, valeur, classe, sous) {
+  const t = $(id);
+  t.className = 'tuile ' + (classe || '');
+  $('.val', t).textContent = valeur;
+  $('.sous', t).textContent = sous || '';
+}
+
+function bascule(id, actif, siActif, siInactif) {
+  // siActif / siInactif = [commande, libellé, classe]
+  const b = $(id);
+  const [cmd, libelle, classe] = actif ? siActif : siInactif;
+  b.dataset.cmd = cmd;
+  $('span', b).textContent = libelle;
+  b.className = 'btn ' + (classe || '');
+}
+
+function afficher(e) {
+  horloge();
+
+  // Tuiles
+  const testBas = e.capteurs.testManqueEau || 0, testHaut = e.capteurs.testTropPlein || 0;
+  if (e.capteurs.tropEau)        tuile('#tNiveau', 'Trop haut', 'avert', testHaut ? 'Confirmation dans ' + duree(testHaut) : 'Sonde de trop-plein active');
+  else if (e.capteurs.manqueEau) tuile('#tNiveau', 'Bas', 'alerte', testBas ? 'Confirmation dans ' + duree(testBas) : 'Sonde de niveau bas active');
+  else                           tuile('#tNiveau', 'Normal', 'ok', '');
+  tuile('#tProtection', e.protection ? 'Active' : 'En pause', e.protection ? 'ok' : 'avert',
+        e.protection ? '' : 'Reprise dans ' + duree(e.pauseRestante));
+  tuile('#tFaisceau', e.capteurs.faisceauCoupe ? 'Coupé' : 'Libre', e.capteurs.faisceauCoupe ? 'avert' : 'ok',
+        e.protection ? '' : 'Ignoré pendant la pause');
+  tuile('#tFiltration', e.filtration ? 'En marche' : "À l'arrêt", e.filtration ? 'ok' : 'alerte', '');
+  e.relais.forEach((on, i) => $('#r' + (i + 1)).classList.toggle('on', on));
+
+  // Points à signaler
+  const a = [];
+  if (!e.wifi.connecte && e.wifi.ap) a.push(['avert', `WiFi de la maison non connecté : point d'accès « ${e.wifi.apSsid} » ouvert`]);
+  if (!e.heureValide) a.push(['alerte', 'Heure non réglée (DS3231 et internet indisponibles)']);
+  if (e.reglageSondes) a.push(['avert', `Réglage des sondes en cours : remplissages et vidanges suspendus (reprise automatique dans ${duree(e.reglageRestant)})`]);
+  if (testBas) a.push(['avert', `Manque d'eau constaté : nouveau test dans ${duree(testBas)} avant remplissage`]);
+  if (testHaut) a.push(['avert', `Trop-plein constaté : nouveau test dans ${duree(testHaut)} avant vidange`]);
+  if (e.led === 'clignote') a.push(['alerte', `Héron détecté : la LED clignote jusqu'à ${e.finClignotement || '2:00'}`]);
+  if (!e.protection) a.push(['avert', `Protection en pause, LED allumée — reprise automatique dans ${duree(e.pauseRestante)}`]);
+  if (!e.filtration) a.push(['alerte', 'Filtration à l\'arrêt']);
+  if (e.remplissageManuel) a.push(['info', `Remplissage manuel en cours depuis ${duree(e.dureeRemplissage)}`]);
+  else if (e.minuterieEau > 0) a.push(['info', `Relais 1 (eau) fermé encore ${duree(e.minuterieEau)}`]);
+  if (e.relais[1]) a.push(['info', 'Arrosage du héron en cours']);
+  const ul = $('#alertes');
+  ul.textContent = '';
+  if (!a.length) a.push(['ok', 'Tout est normal']);
+  a.forEach(([c, t]) => ul.appendChild(el('li', c, t)));
+
+  // Commandes (le bouton change selon l'état)
+  bascule('#bRemplissage', e.remplissageManuel,
+          ['remplissage_stop', 'Arrêter le remplissage', 'koi'],
+          ['remplissage', 'Remplissage', '']);
+  bascule('#bFiltration', e.filtration,
+          ['filtration_off', 'Arrêt de la filtration', ''],
+          ['filtration_on', 'Reprise de la filtration', 'primaire']);
+  $('#bRemplissage').disabled = !!e.reglageSondes && !e.remplissageManuel;
+  bascule('#bProtection', e.protection,
+          ['protection_off', 'Arrêt de la protection (1 h)', ''],
+          ['protection_on', 'Reprise de la protection', 'primaire']);
+
+  // Musique
+  $('#carteMusique').classList.toggle('lecture', e.musique);
+  $('#morceau').textContent = e.musique ? 'Morceau ' + e.morceau : "À l'arrêt";
+  $('#volume').textContent = e.volume;
+  $('#volBarre').style.width = Math.round(e.volume / 31 * 100) + '%';
+
+  // Journal
+  ['remplissages', 'vidanges', 'heron'].forEach(k => {
+    $('#n-' + k).textContent = e.compteurs[k];
+    $('#j-' + k).textContent = `${e.aujourdhui[k]}/${e.quotas[k]} aujourd'hui`;
+  });
+
+  if ($('#dlgParam').open) { infosParametres(e); majSondes(e); }
+}
+
+// ------------------------------------------------------------ Sondes -----
+// anomalie : true (rouge), false (vert) ou null (pas de lecture, gris)
+function voyant(id, anomalie, texteAnomalie) {
+  const v = $(id);
+  if (anomalie === null || anomalie === undefined) {
+    v.className = 'voyant';
+    v.textContent = 'Pas de lecture';
+    return;
+  }
+  v.className = 'voyant ' + (anomalie ? 'alerte' : 'ok');
+  v.textContent = anomalie ? texteAnomalie : "Niveau d'eau normal";
+}
+
+function majSondes(e) {
+  const c = e.capteurs;
+  const direct = typeof c.brutManqueEau === 'boolean';   // programme 1.1.1 ou plus récent
+  voyant('#vBas', direct ? c.brutManqueEau : c.manqueEau, "Niveau d'eau trop bas");
+  voyant('#vHaut', direct ? c.brutTropEau : c.tropEau, "Niveau d'eau trop haut");
+  $('#aideSondes').textContent = direct
+    ? 'Lecture directe des sondes, rafraîchie chaque seconde.'
+    : 'Lecture filtrée sur 3\u00a0s : téléversez le programme 1.3 pour une lecture directe.';
+
+  if (typeof e.reglageSondes !== 'boolean') {              // programme sans mode réglage
+    $('#bReglage').classList.add('cache');
+    $('#etatReglage').textContent = "Attention : la gestion automatique de l'eau reste active pendant les réglages.";
+    return;
+  }
+  bascule('#bReglage', e.reglageSondes,
+          ['reglage_off', 'Terminer le réglage', 'koi'],
+          ['reglage_on', 'Commencer le réglage des sondes', '']);
+  $('#etatReglage').textContent = e.reglageSondes
+    ? `Réglage en cours : remplissages et vidanges suspendus. Reprise automatique dans ${duree(e.reglageRestant)}.`
+    : "Gestion automatique de l'eau active. Avant de manipuler les sondes, commencez le réglage pour suspendre remplissages et vidanges.";
+}
+
+// ------------------------------------------------------------ Commandes --
+async function commande(c, bouton, extra = {}) {
+  if (bouton) bouton.disabled = true;
+  try {
+    const r = DISTANT ? await distant.commande(c, extra) : await envoyer('/api/cmd', Object.assign({ c }, extra));
+    toast(r.message, r.ok);
+  } catch (err) {
+    toast(DISTANT ? "Le bassin ne répond pas (connexion au serveur ?)" : "L'ESP32 ne répond pas", false);
+  } finally {
+    if (bouton) bouton.disabled = false;
+    rafraichir();
+  }
+}
+
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-cmd]');
+  if (!b) return;
+  const c = b.dataset.cmd;
+  if (c === 'filtration_off' &&
+      !await confirmer('Arrêter la filtration ?', 'Le relais 4 va s\'ouvrir. La filtration restera arrêtée jusqu\'à « Reprise de la filtration » (ou jusqu\'à un redémarrage de l\'ESP32).', 'Arrêter la filtration', true)) return;
+  commande(c, b);
+});
+
+$('#bEffacer').addEventListener('click', async () => {
+  const ok = await confirmer('Supprimer toutes les données ?',
+    'Les compteurs de remplissages, de vidanges et de détections du héron seront remis à zéro, et toutes les dates enregistrées seront effacées. Cette opération est irréversible.',
+    'Supprimer', true);
+  if (ok) commande('effacer', $('#bEffacer'), { confirmation: 'OUI' });
+});
+
+// ------------------------------------------------------------ Confirmation
+function confirmer(titre, texte, libelle, danger = false) {
+  return new Promise(resoudre => {
+    const d = $('#dlgConfirm');
+    $('#cTitre').textContent = titre;
+    $('#cTexte').textContent = texte;
+    const ok = $('#cOk');
+    ok.textContent = libelle;
+    ok.className = 'btn ' + (danger ? 'danger-plein' : 'primaire');
+    d.returnValue = '';
+    d.addEventListener('close', () => resoudre(d.returnValue === 'ok'), { once: true });
+    d.showModal();
+  });
+}
+
+// Clic en dehors d'une fenêtre = fermeture
+$$('dialog').forEach(d => d.addEventListener('click', ev => { if (ev.target === d) d.close(); }));
+
+// ------------------------------------------------------------ Historique --
+const TITRES = {
+  remplissages: 'Dates des remplissages',
+  vidanges: 'Dates des vidanges (trop-plein)',
+  heron: 'Détections du héron'
+};
+
+$$('[data-histo]').forEach(b => b.addEventListener('click', () => ouvrirHistorique(b.dataset.histo)));
+
+async function ouvrirHistorique(type) {
+  const ul = $('#hListe');
+  $('#hTitre').textContent = TITRES[type];
+  $('#hResume').textContent = '';
+  ul.textContent = '';
+  ul.appendChild(el('li', 'vide', 'Chargement…'));
+  $('#dlgHisto').showModal();
+  try {
+    const r = DISTANT ? await distant.historique(type) : await api('/api/historique?t=' + type);
+    ul.textContent = '';
+    if (!r.lignes || !r.lignes.length) {
+      ul.appendChild(el('li', 'vide', 'Aucun enregistrement'));
+      return;
+    }
+    $('#hResume').textContent = r.lignes.length + (r.lignes.length > 1 ? ' enregistrements' : ' enregistrement') + ', du plus récent au plus ancien'
+      + (DISTANT && r.lignes.length >= 200 ? ' (200 derniers à distance)' : '');
+    r.lignes.forEach(ligne => {
+      const li = el('li');
+      const m = ligne.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})(?::\d{2})?\s*(.*)$/);
+      if (m) {
+        const d = new Date(+m[3], +m[2] - 1, +m[1]);
+        const date = el('span', '', majuscule(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })));
+        const suffixe = m[6].replace(/[()]/g, '').trim();
+        if (suffixe) date.appendChild(el('span', 'tag', suffixe));
+        li.appendChild(date);
+        li.appendChild(el('span', 'h', m[4] + ' h ' + m[5]));
+      } else {
+        li.appendChild(el('span', '', ligne));
+      }
+      ul.appendChild(li);
+    });
+  } catch (err) {
+    ul.textContent = '';
+    ul.appendChild(el('li', 'vide', "Impossible de lire l'historique"));
+  }
+}
+
+// ------------------------------------------------------------ Paramètres --
+$('#btnParam').addEventListener('click', () => {
+  $('#pReseaux').textContent = '';
+  $('#pPass').value = '';
+  if (etat) {
+    $('#pSsid').value = etat.wifi.ssid || '';
+    $('#pTopic').value = etat.ntfy || '';
+    if (etat.mqtt) {
+      $('#mqHote').value = etat.mqtt.hote || '';
+      $('#mqPort').value = etat.mqtt.port || 8883;
+      $('#mqUser').value = etat.mqtt.user || '';
+      $('#mqBase').value = etat.mqtt.base || '';
+    }
+    $('#mqPass').value = '';
+    infosParametres(etat);
+    majSondes(etat);
+  }
+  if (DISTANT) majSectionDistant();
+  majLienNtfy();
+  $('#dlgParam').showModal();
+  rafraichir();                // passe au rafraîchissement chaque seconde
+});
+
+function infosParametres(e) {
+  $('#pEtatWifi').textContent = e.wifi.connecte
+    ? `Connecté à « ${e.wifi.ssid} » — signal ${qualiteSignal(e.wifi.rssi)} (${e.wifi.rssi} dBm)`
+    : `Non connecté au WiFi de la maison. Point d'accès « ${e.wifi.apSsid} » : http://${e.wifi.apIp}`;
+
+  let heure = 'Aucune source (ni DS3231 ni internet)';
+  if (e.heureInternet) heure = 'Internet' + (e.derniereSynchro ? ', dernière mise à l\'heure à ' + e.derniereSynchro : '') + (e.rtc ? ' — DS3231 recalé' : '');
+  else if (e.rtc) heure = 'DS3231 (pas encore de mise à l\'heure par internet)';
+
+  const lignes = [
+    [DISTANT ? 'Adresse locale' : 'Adresse', e.wifi.connecte ? `http://${e.wifi.hote}.local — http://${e.wifi.ip}` : `http://${e.wifi.apIp}`],
+    ['Heure', heure],
+    ['En marche depuis', duree(e.uptime)],
+    ['Version', e.version]
+  ];
+  if (DISTANT && distant.dernierEtat) lignes.push(['État reçu', 'il y a ' + duree((Date.now() - distant.dernierEtat) / 1000)]);
+
+  // Accès à distance (réglage depuis la page locale)
+  if (!e.mqtt) $('#mqEtat').textContent = "Nécessite le programme 1.4 ou plus récent.";
+  else if (!e.mqtt.configure) $('#mqEtat').textContent = "Non configuré : le bassin n'est accessible que depuis la maison.";
+  else $('#mqEtat').textContent = `Serveur ${e.mqtt.hote} : ${e.mqtt.etat}. Identifiant du bassin : ${e.mqtt.base}`;
+  const dl = $('#pInfos');
+  dl.textContent = '';
+  lignes.forEach(([k, v]) => { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', '', v)); });
+}
+
+$('#bVoirMdp').addEventListener('click', () => {
+  const p = $('#pPass');
+  const visible = p.type === 'text';
+  p.type = visible ? 'password' : 'text';
+  $('#bVoirMdp').textContent = visible ? 'Afficher' : 'Masquer';
+});
+
+$('#bScan').addEventListener('click', async () => {
+  const b = $('#bScan');
+  const zone = $('#pReseaux');
+  b.disabled = true;
+  b.textContent = 'Recherche en cours…';
+  try {
+    const liste = await api('/api/scan', { delai: 20000 });
+    const meilleurs = new Map();
+    liste.forEach(r => { if (r.ssid && (!meilleurs.has(r.ssid) || meilleurs.get(r.ssid).rssi < r.rssi)) meilleurs.set(r.ssid, r); });
+    const tries = Array.from(meilleurs.values()).sort((x, y) => y.rssi - x.rssi);
+    zone.textContent = '';
+    if (!tries.length) zone.appendChild(el('p', 'aide', 'Aucun réseau trouvé.'));
+    tries.forEach(r => {
+      const bt = el('button');
+      bt.type = 'button';
+      bt.appendChild(barresSignal(r.rssi));
+      bt.appendChild(el('span', 'nom', r.ssid));
+      if (!r.ouvert) {
+        const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        s.setAttribute('class', 'i');
+        const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        u.setAttribute('href', '#i-cadenas');
+        s.appendChild(u);
+        bt.appendChild(s);
+      }
+      bt.addEventListener('click', () => {
+        $('#pSsid').value = r.ssid;
+        $('#pPass').value = '';
+        $('#pPass').focus();
+      });
+      zone.appendChild(bt);
+    });
+  } catch (err) {
+    toast('Recherche des réseaux impossible', false);
+  } finally {
+    b.disabled = false;
+    b.textContent = 'Rechercher les réseaux';
+  }
+});
+
+$('#fWifi').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const ssid = $('#pSsid').value.trim();
+  const pass = $('#pPass').value;
+  if (!ssid) return toast('Indiquez le nom du réseau', false);
+  const ok = await confirmer('Changer de réseau WiFi ?',
+    `L'ESP32 va redémarrer et se connecter à « ${ssid} ». S'il n'y parvient pas, il ouvrira le point d'accès « Bassin-Config » (mot de passe bassin1234) pour corriger le réglage.`,
+    'Enregistrer et redémarrer');
+  if (!ok) return;
+  try {
+    const r = await envoyer('/api/wifi', { ssid, pass });
+    toast(r.message, r.ok);
+    if (r.ok) $('#dlgParam').close();
+  } catch (err) {
+    toast("L'ESP32 ne répond pas", false);
+  }
+});
+
+function majLienNtfy() {
+  const t = $('#pTopic').value.trim();
+  const a = $('#lienNtfy');
+  a.classList.toggle('cache', !t);
+  a.href = 'https://ntfy.sh/' + encodeURIComponent(t);
+}
+$('#pTopic').addEventListener('input', majLienNtfy);
+
+async function enregistrerNtfy(silencieux) {
+  const r = await envoyer('/api/ntfy', { topic: $('#pTopic').value.trim() });
+  if (!silencieux || !r.ok) toast(r.message, r.ok);
+  return r.ok;
+}
+
+$('#fNtfy').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  try { await enregistrerNtfy(false); rafraichir(); }
+  catch (err) { toast("L'ESP32 ne répond pas", false); }
+});
+
+$('#bTestNtfy').addEventListener('click', async () => {
+  try {
+    if (!etat || $('#pTopic').value.trim() !== etat.ntfy) {   // sujet modifié : on l'enregistre d'abord
+      if (!await enregistrerNtfy(true)) return;
+    }
+    commande('test_ntfy', $('#bTestNtfy'));
+  } catch (err) {
+    toast("L'ESP32 ne répond pas", false);
+  }
+});
+
+// ------------------------------------------------------------ Mots de passe
+$$('.voirMdp').forEach(b => b.addEventListener('click', () => {
+  const p = document.getElementById(b.dataset.cible);
+  const visible = p.type === 'text';
+  p.type = visible ? 'password' : 'text';
+  b.textContent = visible ? 'Afficher' : 'Masquer';
+}));
+
+// ------------------------------------------------------ Accès à distance (réglage local)
+$('#fMqtt').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const donnees = {
+    hote: $('#mqHote').value.trim().replace(/^(wss?|mqtts?|https?):\/\//, '').replace(/[:/].*$/, ''), port: $('#mqPort').value.trim() || '8883',
+    user: $('#mqUser').value.trim(), pass: $('#mqPass').value, base: $('#mqBase').value.trim()
+  };
+  try {
+    const r = await envoyer('/api/mqtt', donnees);
+    toast(r.message, r.ok);
+    if (r.ok) $('#mqPass').value = '';
+    rafraichir();
+  } catch (err) {
+    toast("L'ESP32 ne répond pas (programme 1.4 installé ?)", false);
+  }
+});
+
+// ------------------------------------------------------------ Mode distant (MQTT)
+const CLE_CONNEXION = 'bassin.connexion';
+function lireConnexion() {
+  try { return JSON.parse(localStorage.getItem(CLE_CONNEXION)) || null; } catch (e) { return null; }
+}
+function ecrireConnexion(c) {
+  try { if (c) localStorage.setItem(CLE_CONNEXION, JSON.stringify(c)); else localStorage.removeItem(CLE_CONNEXION); } catch (e) { /* stockage indisponible */ }
+}
+
+const distant = {
+  client: null,
+  base: '',
+  espEnLigne: null,
+  dernierEtat: 0,
+  enAttente: new Map(),
+  minuterie: null,
+
+  charger() {                                     // bibliothèque MQTT.js (navigateur)
+    return new Promise((ok, ko) => {
+      if (window.mqtt) return ok();
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js';
+      s.onload = () => ok();
+      s.onerror = () => ko(new Error('chargement'));
+      document.head.appendChild(s);
+    });
+  },
+
+  async demarrer() {
+    const conf = lireConnexion();
+    if (!conf) { majConnexionDistant(); ouvrirConnexion(); return; }
+    try { await this.charger(); }
+    catch (err) { connexion(false, "Impossible de charger le module de connexion : vérifie l'accès à internet."); return; }
+    this.connecter(conf);
+  },
+
+  connecter(conf) {
+    this.arreter();
+    this.base = conf.base.replace(/\/+$/, '');
+    this.espEnLigne = null;
+    connexion(false, 'Connexion au serveur…');
+    const c = window.mqtt.connect(`wss://${conf.hote}:${conf.port || 8084}/mqtt`, {
+      username: conf.user,
+      password: conf.pass,
+      clientId: 'bassin-appli-' + Math.random().toString(16).slice(2, 10),
+      clean: true,
+      reconnectPeriod: 5000,
+      connectTimeout: 15000
+    });
+    this.client = c;
+    c.on('connect', () => {
+      c.subscribe([this.base + '/etat', this.base + '/rep', this.base + '/en_ligne'], { qos: 0 });
+      this.ping();
+      majConnexionDistant();
+    });
+    c.on('message', (sujet, charge) => this.recevoir(sujet, charge.toString()));
+    c.on('close', () => majConnexionDistant());
+    c.on('offline', () => majConnexionDistant());
+    c.on('error', err => {
+      const msg = String(err && err.message || err);
+      if (/auth|identifi|password|username|not authori/i.test(msg)) {
+        this.arreter();
+        connexion(false, "Connexion refusée par le serveur : vérifie l'identifiant et le mot de passe.");
+        toast('Identifiant ou mot de passe refusé', false);
+        ouvrirConnexion();
+      }
+    });
+    clearInterval(this.minuterie);
+    this.minuterie = setInterval(() => {               // signe de vie : l'ESP32 envoie l'état toutes les 2 s
+      if (!document.hidden) this.ping();
+      majConnexionDistant();
+    }, 20000);
+  },
+
+  arreter() {
+    clearInterval(this.minuterie);
+    if (this.client) { try { this.client.end(true); } catch (e) { /* déjà fermé */ } }
+    this.client = null;
+  },
+
+  connecte() { return !!(this.client && this.client.connected); },
+
+  recevoir(sujet, texte) {
+    if (sujet === this.base + '/etat') {
+      let e;
+      try { e = JSON.parse(texte); } catch (err) { return; }
+      this.dernierEtat = Date.now();
+      etat = e;
+      afficher(e);
+      majConnexionDistant();
+    } else if (sujet === this.base + '/en_ligne') {
+      this.espEnLigne = texte === '1';
+      majConnexionDistant();
+    } else if (sujet === this.base + '/rep') {
+      let r;
+      try { r = JSON.parse(texte); } catch (err) { return; }
+      const attente = this.enAttente.get(r.id);
+      if (attente) { this.enAttente.delete(r.id); clearTimeout(attente.minuterie); attente.ok(r); }
+    }
+  },
+
+  ping() {
+    if (this.connecte()) this.client.publish(this.base + '/ping', '1');
+  },
+
+  demande(donnees) {                                 // commande + attente de la réponse de l'ESP32
+    return new Promise((ok, ko) => {
+      if (!this.connecte()) return ko(new Error('hors ligne'));
+      const id = Math.random().toString(36).slice(2, 10);
+      const minuterie = setTimeout(() => { this.enAttente.delete(id); ko(new Error('délai')); }, 12000);
+      this.enAttente.set(id, { ok, minuterie });
+      this.client.publish(this.base + '/cmd', JSON.stringify(Object.assign({ id }, donnees)));
+    });
+  },
+  commande(c, extra = {}) { return this.demande(Object.assign({ c }, extra)); },
+  historique(t) { return this.demande({ c: 'historique', t }); }
+};
+
+function majConnexionDistant() {
+  if (!lireConnexion()) return connexion(false, "Pas encore connecté : touche Paramètres puis « Modifier la connexion ».");
+  if (!distant.connecte()) return connexion(false, 'Connexion au serveur en cours… (vérifie la connexion internet du téléphone)');
+  if (distant.espEnLigne === false)
+    return connexion(false, "Le bassin n'est pas connecté au serveur" + (etat && etat.heure ? ` — dernier état reçu : ${etat.heure}` : '') + '.');
+  connexion(true);
+  if ($('#dlgParam').open) majSectionDistant();
+}
+
+function majSectionDistant() {
+  const conf = lireConnexion();
+  let texte = 'Aucune connexion enregistrée sur cet appareil.';
+  if (conf) {
+    texte = `Serveur ${conf.hote}, bassin « ${conf.base} » : `;
+    if (!distant.connecte()) texte += 'connexion au serveur en cours.';
+    else if (distant.espEnLigne === false) texte += "le bassin n'est pas connecté au serveur.";
+    else texte += 'connecté.';
+  }
+  $('#dEtat').textContent = texte;
+}
+
+function ouvrirConnexion() {
+  const conf = lireConnexion() || {};
+  $('#cHote').value = conf.hote || '';
+  $('#cPort').value = conf.port || '';
+  $('#cUser').value = conf.user || '';
+  $('#cPass').value = conf.pass || '';
+  $('#cBase').value = conf.base || '';
+  if (!$('#dlgConnexion').open) $('#dlgConnexion').showModal();
+}
+
+$('#fConnexion').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const conf = {
+    hote: $('#cHote').value.trim().replace(/^(wss?|mqtts?|https?):\/\//, '').replace(/[:/].*$/, ''),
+    port: parseInt($('#cPort').value, 10) || 8084,
+    user: $('#cUser').value.trim(),
+    pass: $('#cPass').value,
+    base: $('#cBase').value.trim()
+  };
+  if (!conf.hote || !conf.user || !conf.pass || !conf.base) return toast('Remplis tous les champs', false);
+  ecrireConnexion(conf);
+  $('#dlgConnexion').close();
+  try { await distant.charger(); }
+  catch (err) { return connexion(false, "Impossible de charger le module de connexion : vérifie l'accès à internet."); }
+  distant.connecter(conf);
+});
+$('#bFermerConnexion').addEventListener('click', () => $('#dlgConnexion').close());
+$('#bModifConnexion').addEventListener('click', () => ouvrirConnexion());
+$('#bOublier').addEventListener('click', async () => {
+  if (!await confirmer('Oublier la connexion ?', "Le serveur, l'identifiant et le mot de passe seront effacés de cet appareil.", 'Oublier', true)) return;
+  distant.arreter();
+  ecrireConnexion(null);
+  etat = null;
+  majConnexionDistant();
+  majSectionDistant();
+});
+
+// ------------------------------------------------------------ Démarrage --
+['#secWifi', '#secNtfy', '#secMqtt', '#liensMaj'].forEach(s => $(s).classList.toggle('cache', DISTANT));
+$('#secDistant').classList.toggle('cache', !DISTANT);
+if (DISTANT) {
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  distant.demarrer();
+} else {
+  rafraichirLocal();
+}
+</script>
+</body>
+</html>
