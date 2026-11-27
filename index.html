@@ -131,6 +131,9 @@
   }
   .relais span b { display: block; font-size: .9rem; }
   .relais span.on { background: var(--primaire-pale); border-color: var(--primaire); color: var(--texte); }
+  .relais em { font-style: normal; }
+  .tuile.large { grid-column: 1 / -1; }
+  .tuile.large .val { font-size: 1.4rem; }
 
   /* ---------- Boutons ---------- */
   .btn {
@@ -280,6 +283,7 @@
   <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9s1.3-6.4 3.8-9z"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></symbol>
   <symbol id="i-cadenas" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
 </svg>
 
@@ -303,16 +307,17 @@
     <h2><svg class="i"><use href="#i-etat"/></svg>État du bassin</h2>
     <ul class="alertes" id="alertes"><li>Chargement…</li></ul>
     <div class="tuiles">
+      <div class="tuile large cache" id="tTemp"><div class="lib">Température de l'eau</div><div class="val">—</div><div class="sous"></div></div>
       <div class="tuile" id="tNiveau"><div class="lib">Niveau d'eau</div><div class="val">—</div><div class="sous"></div></div>
       <div class="tuile" id="tProtection"><div class="lib">Protection héron</div><div class="val">—</div><div class="sous"></div></div>
       <div class="tuile" id="tFaisceau"><div class="lib">Faisceau optique</div><div class="val">—</div><div class="sous"></div></div>
       <div class="tuile" id="tFiltration"><div class="lib">Filtration</div><div class="val">—</div><div class="sous"></div></div>
     </div>
     <div class="relais" aria-label="État des relais">
-      <span id="r1"><b>R1</b>Eau</span>
-      <span id="r2"><b>R2</b>Arrosage</span>
-      <span id="r3"><b>R3</b>Sono</span>
-      <span id="r4"><b>R4</b>Filtration</span>
+      <span id="r1"><b>R1</b><em>Sono</em></span>
+      <span id="r2"><b>R2</b><em>Eau</em></span>
+      <span id="r3"><b>R3</b><em>Arrêt filtration</em></span>
+      <span id="r4"><b>R4</b><em>Arrosage</em></span>
     </div>
   </section>
 
@@ -410,6 +415,14 @@
         <p class="aide" id="etatReglage" style="margin:6px 2px 8px"></p>
         <button class="btn" id="bReglage" type="button" data-cmd="reglage_on">
           <svg class="i"><use href="#i-reglages"/></svg><span>Commencer le réglage des sondes</span>
+        </button>
+      </section>
+
+      <section class="param cache" id="secTemp">
+        <h4><svg class="i"><use href="#i-thermo"/></svg>Sonde de température</h4>
+        <p class="aide" id="tempEtat" style="margin:0 2px 8px">–</p>
+        <button class="btn" id="bTemp" type="button" data-cmd="temperature">
+          <svg class="i"><use href="#i-thermo"/></svg><span>Mesurer maintenant</span>
         </button>
       </section>
 
@@ -658,7 +671,7 @@ setInterval(horloge, 1000);
 // ------------------------------------------------------------ Affichage --
 function tuile(id, valeur, classe, sous) {
   const t = $(id);
-  t.className = 'tuile ' + (classe || '');
+  ['ok', 'avert', 'alerte'].forEach(c => t.classList.toggle(c, c === classe));   // garde « large » et « cache »
   $('.val', t).textContent = valeur;
   $('.sous', t).textContent = sous || '';
 }
@@ -686,6 +699,9 @@ function afficher(e) {
         e.protection ? '' : 'Ignoré pendant la pause');
   tuile('#tFiltration', e.filtration ? 'En marche' : "À l'arrêt", e.filtration ? 'ok' : 'alerte', '');
   e.relais.forEach((on, i) => $('#r' + (i + 1)).classList.toggle('on', on));
+  if (Array.isArray(e.relaisNoms))                    // noms fournis par le programme (affectation des relais)
+    e.relaisNoms.forEach((n, i) => { const s = $('#r' + (i + 1) + ' em'); if (s) s.textContent = n; });
+  majTemperature(e);
 
   // Points à signaler
   const a = [];
@@ -698,8 +714,9 @@ function afficher(e) {
   if (!e.protection) a.push(['avert', `Protection en pause, LED allumée — reprise automatique dans ${duree(e.pauseRestante)}`]);
   if (!e.filtration) a.push(['alerte', 'Filtration à l\'arrêt']);
   if (e.remplissageManuel) a.push(['info', `Remplissage manuel en cours depuis ${duree(e.dureeRemplissage)}`]);
-  else if (e.minuterieEau > 0) a.push(['info', `Relais 1 (eau) fermé encore ${duree(e.minuterieEau)}`]);
-  if (e.relais[1]) a.push(['info', 'Arrosage du héron en cours']);
+  else if (e.minuterieEau > 0) a.push(['info', `Arrivée d'eau ouverte encore ${duree(e.minuterieEau)}`]);
+  if (typeof e.arrosage === 'boolean' ? e.arrosage : e.relais[1]) a.push(['info', 'Arrosage du héron en cours']);
+  if (e.temperature && e.temperature.erreur) a.push(['avert', 'Sonde de température : ' + e.temperature.erreur]);
   const ul = $('#alertes');
   ul.textContent = '';
   if (!a.length) a.push(['ok', 'Tout est normal']);
@@ -730,6 +747,38 @@ function afficher(e) {
   });
 
   if ($('#dlgParam').open) { infosParametres(e); majSondes(e); }
+}
+
+// ------------------------------------------------------------ Température
+const texteTemp = v => Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '\u00a0°C';
+
+function majTemperature(e) {
+  const t = e.temperature;
+  $('#tTemp').classList.toggle('cache', !t);
+  $('#secTemp').classList.toggle('cache', !t);
+  if (!t) return;                                    // programme sans sonde de température
+  const quand = t.enCours ? '' : (t.prochaine || '');
+  const h = t.heure ? ' à ' + t.heure : '';
+  let val, classe, sous, detail;
+  if (t.valide) {
+    val = texteTemp(t.valeur);
+    classe = t.erreur ? 'avert' : 'ok';
+    sous = t.erreur
+      ? `Dernière mesure réussie${h}` + (t.enCours ? ' · nouvel essai en cours…' : quand ? ` · nouvel essai à ${quand}` : '')
+      : `Mesurée${h}` + (t.enCours ? ' · nouvelle mesure en cours…' : quand ? ` · prochaine à ${quand}` : '');
+    detail = `Dernière mesure : ${val}${h}.`;
+  } else if (t.erreur) {
+    val = 'Pas de mesure'; classe = 'alerte'; sous = majuscule(t.erreur);
+    detail = 'Aucune mesure réussie depuis le démarrage.';
+  } else {
+    val = t.enCours ? 'Mesure en cours…' : '—'; classe = ''; sous = t.enCours ? '' : 'Première mesure dans quelques secondes';
+    detail = 'Pas encore de mesure.';
+  }
+  tuile('#tTemp', val, classe, sous);
+  if (t.erreur) detail += ` Dernier essai : ${t.erreur}.`;
+  detail += t.enCours ? ' Mesure en cours…' : quand ? ` Prochaine mesure à ${quand}.` : '';
+  $('#tempEtat').textContent = detail + " Une mesure par heure ; la sonde n'est alimentée (D19) que pendant la mesure.";
+  $('#bTemp').disabled = !!t.enCours;
 }
 
 // ------------------------------------------------------------ Sondes -----
@@ -786,7 +835,7 @@ document.addEventListener('click', async ev => {
   if (!b) return;
   const c = b.dataset.cmd;
   if (c === 'filtration_off' &&
-      !await confirmer('Arrêter la filtration ?', 'Le relais 4 va s\'ouvrir. La filtration restera arrêtée jusqu\'à « Reprise de la filtration » (ou jusqu\'à un redémarrage de l\'ESP32).', 'Arrêter la filtration', true)) return;
+      !await confirmer('Arrêter la filtration ?', 'La pompe de filtration va s\'arrêter. Elle restera arrêtée jusqu\'à « Reprise de la filtration » (ou jusqu\'à un redémarrage de l\'ESP32).', 'Arrêter la filtration', true)) return;
   commande(c, b);
 });
 
