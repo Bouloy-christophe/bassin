@@ -78,6 +78,10 @@
   .marque { display: flex; align-items: center; gap: 8px; font-size: .95rem; font-weight: 600; letter-spacing: .02em; opacity: .9; }
   .marque .point { width: 9px; height: 9px; border-radius: 50%; background: #5be3a0; box-shadow: 0 0 0 3px rgba(91, 227, 160, .25); }
   .marque.hors-ligne .point { background: #ff8a7a; box-shadow: 0 0 0 3px rgba(255, 138, 122, .25); }
+  .marque .signal { display: inline-flex; align-items: flex-end; gap: 5px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+  .marque .signal .barres i { background: rgba(255, 255, 255, .3); }
+  .marque .signal .barres i.on { background: #fff; }
+  .marque .signal.faible .barres i.on { background: #ffb35c; }
   #heure { font-size: clamp(2.4rem, 11vw, 3.4rem); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.1; margin-top: 10px; }
   #date { font-size: 1.02rem; opacity: .85; margin-top: 2px; }
   .btn-icone {
@@ -290,7 +294,7 @@
 <header>
   <div class="entete">
     <div>
-      <div class="marque" id="marque"><span class="point"></span><span id="etatConnexion">Bassin</span></div>
+      <div class="marque" id="marque"><span class="point"></span><span id="etatConnexion">Bassin</span><span class="signal cache" id="signal"></span></div>
       <div id="heure">--:--:--</div>
       <div id="date">Connexion à l'ESP32…</div>
     </div>
@@ -593,7 +597,7 @@ function connexion(ok, texte) {
   $('#etatConnexion').textContent = ok ? (DISTANT ? 'Bassin · à distance' : 'Bassin') : 'Bassin · hors ligne';
   $('#bandeau').textContent = texte || "Connexion perdue avec l'ESP32 — nouvelle tentative en cours…";
   $('#bandeau').classList.toggle('cache', ok);
-  if (!ok) { voyant('#vBas', null); voyant('#vHaut', null); }
+  if (!ok) { voyant('#vBas', null); voyant('#vHaut', null); $('#signal').classList.add('cache'); }
 }
 
 // ------------------------------------------------------------ Outils ----
@@ -702,10 +706,12 @@ function afficher(e) {
   if (Array.isArray(e.relaisNoms))                    // noms fournis par le programme (affectation des relais)
     e.relaisNoms.forEach((n, i) => { const s = $('#r' + (i + 1) + ' em'); if (s) s.textContent = n; });
   majTemperature(e);
+  majSignal(e);
 
   // Points à signaler
   const a = [];
   if (!e.wifi.connecte && e.wifi.ap) a.push(['avert', `WiFi de la maison non connecté : point d'accès « ${e.wifi.apSsid} » ouvert`]);
+  if (e.wifi.connecte && e.wifi.rssi < -80) a.push(['avert', `Signal WiFi faible (${dBm(e.wifi.rssi)}) : la liaison avec la box peut décrocher`]);
   if (!e.heureValide) a.push(['alerte', 'Heure non réglée (DS3231 et internet indisponibles)']);
   if (e.reglageSondes) a.push(['avert', `Réglage des sondes en cours : remplissages et vidanges suspendus (reprise automatique dans ${duree(e.reglageRestant)})`]);
   if (testBas) a.push(['avert', `Manque d'eau constaté : nouveau test dans ${duree(testBas)} avant remplissage`]);
@@ -747,6 +753,20 @@ function afficher(e) {
   });
 
   if ($('#dlgParam').open) { infosParametres(e); majSondes(e); }
+}
+
+// ------------------------------------------------------------ Signal WiFi
+// Puissance du WiFi de la maison reçue par l'ESP32, dans l'en-tête (barres + dBm).
+const dBm = r => String(r).replace('-', '\u2212') + '\u00a0dBm';
+function majSignal(e) {
+  const s = $('#signal');
+  if (!e.wifi || !e.wifi.connecte || !(e.wifi.rssi < 0)) { s.classList.add('cache'); return; }
+  s.textContent = '';
+  s.appendChild(barresSignal(e.wifi.rssi));
+  s.appendChild(document.createTextNode(dBm(e.wifi.rssi)));
+  s.title = 'Signal WiFi ' + qualiteSignal(e.wifi.rssi) + " reçu par l'ESP32";
+  s.classList.toggle('faible', e.wifi.rssi < -80);
+  s.classList.remove('cache');
 }
 
 // ------------------------------------------------------------ Température
@@ -836,6 +856,8 @@ document.addEventListener('click', async ev => {
   const c = b.dataset.cmd;
   if (c === 'filtration_off' &&
       !await confirmer('Arrêter la filtration ?', 'La pompe de filtration va s\'arrêter. Elle restera arrêtée jusqu\'à « Reprise de la filtration » (ou jusqu\'à un redémarrage de l\'ESP32).', 'Arrêter la filtration', true)) return;
+  if (c === 'filtration_on' &&
+      !await confirmer('Reprendre la filtration ?', 'La pompe de filtration va redémarrer. Avant de confirmer, vérifiez que le filtre et les vannes sont en place.', 'Reprendre la filtration')) return;
   commande(c, b);
 });
 
@@ -934,9 +956,16 @@ $('#btnParam').addEventListener('click', () => {
 });
 
 function infosParametres(e) {
-  $('#pEtatWifi').textContent = e.wifi.connecte
+  let tw = e.wifi.connecte
     ? `Connecté à « ${e.wifi.ssid} » — signal ${qualiteSignal(e.wifi.rssi)} (${e.wifi.rssi} dBm)`
     : `Non connecté au WiFi de la maison. Point d'accès « ${e.wifi.apSsid} » : http://${e.wifi.apIp}`;
+  // Programme 1.6 : signal le plus bas et coupures depuis le démarrage de l'ESP32
+  if (e.wifi.rssiMin < 0) tw += `. Signal le plus bas depuis le démarrage : ${e.wifi.rssiMin} dBm`;
+  if (e.wifi.pertes !== undefined)
+    tw += e.wifi.pertes
+      ? `. ${e.wifi.pertes} coupure${e.wifi.pertes > 1 ? 's' : ''} depuis le démarrage, la dernière il y a ${duree(e.wifi.dernierePerte)}`
+      : '. Aucune coupure depuis le démarrage';
+  $('#pEtatWifi').textContent = tw + (e.wifi.pertes !== undefined || e.wifi.rssiMin < 0 ? '.' : '');
 
   let heure = 'Aucune source (ni DS3231 ni internet)';
   if (e.heureInternet) heure = 'Internet' + (e.derniereSynchro ? ', dernière mise à l\'heure à ' + e.derniereSynchro : '') + (e.rtc ? ' — DS3231 recalé' : '');
