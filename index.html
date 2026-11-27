@@ -229,6 +229,7 @@
   }
   .reseaux button:hover { border-color: var(--bord); }
   .reseaux .nom { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .reseaux .detail { color: var(--doux); font-size: .8rem; white-space: nowrap; }
   .barres { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
   .barres i { width: 3px; background: var(--bord); border-radius: 1px; }
   .barres i.on { background: var(--primaire); }
@@ -957,7 +958,8 @@ $('#btnParam').addEventListener('click', () => {
 
 function infosParametres(e) {
   let tw = e.wifi.connecte
-    ? `Connecté à « ${e.wifi.ssid} » — signal ${qualiteSignal(e.wifi.rssi)} (${e.wifi.rssi} dBm)`
+    ? `Connecté à « ${e.wifi.ssid} » — signal ${qualiteSignal(e.wifi.rssi)} (${e.wifi.rssi} dBm)` +
+      (e.wifi.bssid ? `, borne ${e.wifi.bssid} sur le canal ${e.wifi.canal}` : '')
     : `Non connecté au WiFi de la maison. Point d'accès « ${e.wifi.apSsid} » : http://${e.wifi.apIp}`;
   // Programme 1.6 : signal le plus bas et coupures depuis le démarrage de l'ESP32
   if (e.wifi.rssiMin < 0) tw += `. Signal le plus bas depuis le démarrage : ${e.wifi.rssiMin} dBm`;
@@ -1002,9 +1004,16 @@ $('#bScan').addEventListener('click', async () => {
   b.textContent = 'Recherche en cours…';
   try {
     const liste = await api('/api/scan', { delai: 20000 });
-    const meilleurs = new Map();
-    liste.forEach(r => { if (r.ssid && (!meilleurs.has(r.ssid) || meilleurs.get(r.ssid).rssi < r.rssi)) meilleurs.set(r.ssid, r); });
-    const tries = Array.from(meilleurs.values()).sort((x, y) => y.rssi - x.rssi);
+    // Programme 1.6.2 : chaque borne est listée (box et répéteur séparés) avec son canal.
+    // Avec un programme plus ancien (sans canal), on garde la meilleure borne par nom.
+    let tries;
+    if (liste.some(r => r.canal)) {
+      tries = liste.filter(r => r.ssid).sort((x, y) => y.rssi - x.rssi);
+    } else {
+      const meilleurs = new Map();
+      liste.forEach(r => { if (r.ssid && (!meilleurs.has(r.ssid) || meilleurs.get(r.ssid).rssi < r.rssi)) meilleurs.set(r.ssid, r); });
+      tries = Array.from(meilleurs.values()).sort((x, y) => y.rssi - x.rssi);
+    }
     zone.textContent = '';
     if (!tries.length) zone.appendChild(el('p', 'aide', 'Aucun réseau trouvé.'));
     tries.forEach(r => {
@@ -1012,6 +1021,8 @@ $('#bScan').addEventListener('click', async () => {
       bt.type = 'button';
       bt.appendChild(barresSignal(r.rssi));
       bt.appendChild(el('span', 'nom', r.ssid));
+      bt.appendChild(el('span', 'detail', (r.canal ? 'canal ' + r.canal + ' · ' : '') + dBm(r.rssi)));
+      if (r.bssid) bt.title = 'Borne ' + r.bssid;
       if (!r.ouvert) {
         const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('class', 'i');
