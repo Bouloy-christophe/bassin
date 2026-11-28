@@ -856,7 +856,7 @@ document.addEventListener('click', async ev => {
   if (!b) return;
   const c = b.dataset.cmd;
   if (c === 'filtration_off' &&
-      !await confirmer('Arrêter la filtration ?', 'La pompe de filtration va s\'arrêter. Elle restera arrêtée jusqu\'à « Reprise de la filtration » (ou jusqu\'à un redémarrage de l\'ESP32).', 'Arrêter la filtration', true)) return;
+      !await confirmer('Arrêter la filtration ?', 'La pompe de filtration va s\'arrêter. L\'arrêt est mémorisé : elle restera arrêtée, même après une coupure de courant, jusqu\'à « Reprise de la filtration ».', 'Arrêter la filtration', true)) return;
   if (c === 'filtration_on' &&
       !await confirmer('Reprendre la filtration ?', 'La pompe de filtration va redémarrer. Avant de confirmer, vérifiez que le filtre et les vannes sont en place.', 'Reprendre la filtration')) return;
   commande(c, b);
